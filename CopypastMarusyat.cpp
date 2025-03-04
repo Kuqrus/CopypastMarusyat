@@ -5,29 +5,37 @@
 #include <locale>
 #include <codecvt>
 #include <iostream>
+#include <map>
 
-std::locale locale("ru-RU.utf-8");
+const std::map<wchar_t, wchar_t> symbols
+{ 
+    {L'Ё', L'е'}, {L'ё', L'е'}, {L'\n', L' '},
+    {L'@', L'@'}, {L'$', L'$'},
+    {L'%', L'%'}, {L'&', L'&'}
+};
+
+const std::locale locale("ru-RU.utf-8");
 
 std::wstring ConvertText(const std::wstring& input) 
 {
     std::wstring output;
     for (wchar_t c : input) 
     {
-        if (!iswpunct(c)) {            
-            if (tolower(c, locale) == L'ё')
-            {
-                output += L'е';
-            }
-            else if (iswspace(output[output.size() - 1]) && iswspace(c))
+        if (symbols.count(c))
+        {
+            if (c == L'\n')
+                output.pop_back();
+            output.push_back(symbols.at(c));
+        }
+        else if (!iswpunct(c))
+        {
+            if (iswspace(output.back()) && iswspace(c))
             {
                 continue;
             }
-            else
-            {
-                output += tolower(c, locale);
-            }
+            output += tolower(c, locale);
         }
-        else if (iswalpha(output[output.size() - 1]) && c == '-')
+        else if ((iswalpha(output.back()) || iswdigit(output.back())) && c == L'-')
         {
             output += c;
         }
@@ -92,7 +100,7 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 
 int main() 
 {
-    setlocale(LC_ALL, "");
+    setlocale(LC_ALL, "");    
 
     HWND hwndConsole = GetConsoleWindow();
     if (hwndConsole) 
@@ -107,10 +115,11 @@ int main()
             << "2. Нажать сочетание левый CTRL+Q\n"
             << "3. Вставить текст\n"
             << "\n\n"
-            << "Внимание! Текущая версия удаляет дефис между цифрами (2-3 -> 23) и не удаляет перенос на следующую строку"
+            << "Внимание! Следующие символы так же будут удалены:\n"
+            << "Решетка(#), Номер(№), Математические знаки, Все валютные знаки кроме $"
             << std::endl;
     }
-
+    // # № 
     HHOOK hHook = SetWindowsHookEx(WH_KEYBOARD_LL, LowLevelKeyboardProc, NULL, 0);
     if (!hHook) 
     {
